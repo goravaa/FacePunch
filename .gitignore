@@ -30,3 +30,12 @@
 *.exe
 *.out
 *.app
+
+# Models
+assets/models/
+*.onnx
+*.pdb
+libs/onnxruntime/lib/
+
+# build
+build/
