@@ -14,16 +14,16 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets Multimedia MultimediaWidgets)
 include_directories(include)
 include_directories(${CMAKE_SOURCE_DIR}/libs/onnxruntime/include)
 
-# Add executable
+# Add executable (ONLY .cpp/.ui files, NOT headers!)
 add_executable(FacePunch
     src/main.cpp
     src/MainWindow.cpp
-    include/MainWindow.hpp
-    src/MainWindow.ui
-    include/FaceDetector.hpp
     src/FaceDetector.cpp
-    include/config.h 
     src/config.cpp
+    src/MainWindow.ui
+    include/MainWindow.hpp
+    include/FaceDetector.hpp
+    include/config.h
 )
 
 # Link Qt6 Widgets and Multimedia
@@ -39,3 +39,18 @@ target_link_libraries(FacePunch PRIVATE ${CMAKE_SOURCE_DIR}/libs/onnxruntime/lib
 
 # Ensure the library directory is in the linker path
 target_link_directories(FacePunch PRIVATE ${CMAKE_SOURCE_DIR}/libs/onnxruntime/lib)
+
+add_custom_command(TARGET FacePunch POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_SOURCE_DIR}/assets"
+        "$<TARGET_FILE_DIR:FacePunch>/assets"
+)
+
+# Copy ONNX Runtime DLL after build (Windows only)
+if(WIN32)
+    add_custom_command(TARGET FacePunch POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_SOURCE_DIR}/libs/onnxruntime/lib/onnxruntime.dll"
+            "$<TARGET_FILE_DIR:FacePunch>"
+    )
+endif()

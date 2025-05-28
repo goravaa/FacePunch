@@ -31,11 +31,44 @@
 *.out
 *.app
 
-# Models
-assets/models/
-*.onnx
-*.pdb
-libs/onnxruntime/lib/
-
-# build
+# Build directory 
 build/
+
+# VS Code/CLion configs (optional)
+.vscode/
+.idea/
+
+# Qt
+*.pro.user
+*.qmake.stash
+*.qmake.cache
+*.pro.user.*
+Makefile
+moc_*
+ui_*
+*.moc
+*.bak
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+*.dir
+
+# ONNX/ML Model files, weights, and large files
+*.onnx
+*.h5
+*.pb
+*.pdb
+
+# Ignore all model files inside assets/models, but keep the directory (using .gitkeep or README.md)
+assets/models/*
+!assets/models/.gitkeep
+!assets/models/README.md
+
+# Ignore onnxruntime/lib binaries & debug files
+libs/
+
+# System/OS files
+.DS_Store
+Thumbs.db

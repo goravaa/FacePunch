@@ -1,5 +1,0 @@
-C:/Users/garvw/Projects/FacePunch/build/CMakeFiles/FacePunch.dir
-C:/Users/garvw/Projects/FacePunch/build/CMakeFiles/edit_cache.dir
-C:/Users/garvw/Projects/FacePunch/build/CMakeFiles/rebuild_cache.dir
-C:/Users/garvw/Projects/FacePunch/build/CMakeFiles/FacePunch_autogen_timestamp_deps.dir
-C:/Users/garvw/Projects/FacePunch/build/CMakeFiles/FacePunch_autogen.dir

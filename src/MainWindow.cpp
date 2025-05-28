@@ -61,10 +61,37 @@ void MainWindow::onVideoFrame(const QVideoFrame &frame)
     for (const auto &f : faces)
     {
         // --- Draw face box (green) ---
+        // Calculate tight bounding box from landmarks
+        float min_x = std::min({f.left_eye_x, f.right_eye_x, f.nose_x, f.mouth_x, f.left_cheek_x, f.right_cheek_x});
+        float max_x = std::max({f.left_eye_x, f.right_eye_x, f.nose_x, f.mouth_x, f.left_cheek_x, f.right_cheek_x});
+        float min_y = std::min({f.left_eye_y, f.right_eye_y, f.nose_y, f.mouth_y, f.left_cheek_y, f.right_cheek_y});
+        float max_y = std::max({f.left_eye_y, f.right_eye_y, f.nose_y, f.mouth_y, f.left_cheek_y, f.right_cheek_y});
+
+        // Optional: add padding for comfort
+        float padding = 20;
+        min_x = std::max(0.0f, min_x - padding);
+        max_x = std::min(float(image.width() - 1), max_x + padding);
+        min_y = std::max(0.0f, min_y - padding);
+        max_y = std::min(float(image.height() - 1), max_y + padding);
+
+        float box_width = max_x - min_x;
+        float box_height = max_y - min_y;
+
+        // Add padding
+        float expand_top = box_height * 0.40f;    // 35% above min_y
+        float expand_bottom = box_height * 0.45f; // 40% below max_y
+           // 10% left and right
+
+        float tight_x1 = std::max(0.0f, min_x);
+        float tight_x2 = std::min(float(display.width()), max_x);
+        float tight_y1 = std::max(0.0f, min_y - expand_top);
+        float tight_y2 = std::min(float(display.height()), max_y + expand_bottom);
+
+        QRect tightRect(QPoint(static_cast<int>(tight_x1), static_cast<int>(tight_y1)),
+                        QPoint(static_cast<int>(tight_x2), static_cast<int>(tight_y2)));
+
         painter.setPen(QPen(Qt::green, 5));
-        QRect faceRect(QPoint(static_cast<int>(f.x1), static_cast<int>(f.y1)),
-                       QPoint(static_cast<int>(f.x2), static_cast<int>(f.y2)));
-        painter.drawRect(faceRect);
+        painter.drawRect(tightRect);
 
         // --- Draw confidence ---
         painter.setPen(QPen(Qt::green, 2));
