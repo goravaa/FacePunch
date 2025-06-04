@@ -11,8 +11,9 @@ set(CMAKE_AUTORCC ON)
 find_package(Qt6 REQUIRED COMPONENTS Widgets Multimedia MultimediaWidgets)
 
 # Include directories
-include_directories(include)
+
 include_directories(${CMAKE_SOURCE_DIR}/libs/onnxruntime/include)
+include_directories(${CMAKE_SOURCE_DIR}/include/hnswlib)
 
 # Add executable (ONLY .cpp/.ui files, NOT headers!)
 add_executable(FacePunch
@@ -21,9 +22,9 @@ add_executable(FacePunch
     src/FaceDetector.cpp
     src/config.cpp
     src/MainWindow.ui
+    src/FaceEmbedder.cpp
+    src/FaceIndex.cpp
     include/MainWindow.hpp
-    include/FaceDetector.hpp
-    include/config.h
 )
 
 # Link Qt6 Widgets and Multimedia
@@ -33,6 +34,8 @@ target_link_libraries(FacePunch
       Qt6::Multimedia
       Qt6::MultimediaWidgets
 )
+
+target_include_directories(FacePunch PRIVATE include/)
 
 # Link ONNX Runtime library
 target_link_libraries(FacePunch PRIVATE ${CMAKE_SOURCE_DIR}/libs/onnxruntime/lib/onnxruntime.lib)

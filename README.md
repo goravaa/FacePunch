@@ -5,9 +5,11 @@
 
 ### 1. **Download the BlazeFace Model**
 - Download the ONNX face detection model from [Hugging Face](https://huggingface.co/garavv/blazeface-onnx/resolve/main/blaze.onnx)
+- Download the ONXX face recognition model ffrom [Hugging Face](https://huggingface.co/garavv/arcface-onnx)
 - Place it in the following directory (create it if it doesn't exist):
     ```
     assets/models/blaze.onnx
+    assets/models/arc.onnx
     ```
 
 ### 2. **Download ONNX Runtime for Windows**

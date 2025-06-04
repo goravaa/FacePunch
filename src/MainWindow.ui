@@ -33,6 +33,38 @@
      <string/>
     </property>
    </widget>
+   <widget class="QPushButton" name="RegisterUserButton">
+    <property name="geometry">
+     <rect>
+      <x>1050</x>
+      <y>40</y>
+      <width>160</width>
+      <height>40</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Register User</string>
+    </property>
+    <property name="visible">
+     <bool>false</bool>
+    </property>
+   </widget>
+   <widget class="QLabel" name="UserHintLabel">
+    <property name="geometry">
+     <rect>
+      <x>1050</x>
+      <y>90</y>
+      <width>250</width>
+      <height>30</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>User Unknown, please register</string>
+    </property>
+    <property name="visible">
+     <bool>false</bool>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
