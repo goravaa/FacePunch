@@ -8,10 +8,29 @@
 #include <QCamera>
 #include <QMediaCaptureSession>
 #include <QVideoSink>
+#include <QTransform> // Added for QTransform
+#include <cmath>      // Added for std::atan2, std::sqrt
 #include "FaceDetector.hpp"
 #include "config.h"
 #include "FaceEmbedder.hpp"
 #include "FaceIndex.hpp"
+#include <memory>
+#include <QAction> // Added for QAction
+#include <QMenuBar> // Added for menuBar()
+#include <QDateTime> // For attendance logging
+#include <QFile>     // For attendance logging
+#include <QTextStream> // For attendance logging
+
+// Forward declare SettingsDialog
+class SettingsDialog;
+
+// Forward declare Qt UI classes for User Management Tab
+class QTabWidget;
+class QTableWidget;
+class QPushButton;
+class QVBoxLayout;
+class QWidget;
+
 
 QT_BEGIN_NAMESPACE
 namespace Ui
@@ -27,8 +46,8 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(const AppConfig &config, QWidget *parent = nullptr);
     ~MainWindow();
-    FaceEmbedder *embedder = nullptr;       // For embedding
-    FaceIndex *faceIndex = nullptr;         // For storing/searching
+    std::unique_ptr<FaceEmbedder> embedder = nullptr;       // For embedding
+    std::unique_ptr<FaceIndex> faceIndex = nullptr;         // For storing/searching
     std::vector<std::string> recentResults; // To track per-frame results
     
 
@@ -38,13 +57,42 @@ private slots:
     void onVideoFrame(const QVideoFrame &frame); // <-- For Qt 6 video frame callback
     void onRegisterUser();     
     QImage cropFace(const QImage &img, const FaceDetection &fd);
+    QImage alignFace(const QImage &sourceImage, const FaceDetection &detectedFace); // Added for face alignment
+    void openSettingsDialog(); // Slot to open settings dialog
+    void populateUserTable(); // Slot to populate the user table
+    void onDeleteUserClicked(); // Slot for delete user button
+    void onEditUserNameClicked(); // Slot for edit user name button
+    void populateAttendanceTable(); // Slot to populate the attendance table
 
 
 private:
     Ui::MainWindow *ui;
+    QMenu *fileMenu; // Added for File menu
+    QAction *settingsAction; // Added for Settings action
     QTimer *timer;
-    FaceDetector detector;
+    std::unique_ptr<FaceDetector> detector; // Changed to unique_ptr
     QImage lastFrame;
+    AppConfig m_appConfig; // Added AppConfig member
+
+    // For attendance log debouncing
+    std::unordered_map<size_t, QDateTime> m_lastLogTimestamps;
+    int m_attendanceLogDebounceSecs = 10; // Default, consider making this part of AppConfig later
+
+    // UI elements for User Management Tab
+    QTabWidget *mainTabWidget;
+    QWidget *liveViewTab; // To hold the camera feed
+    QWidget *userManagementTab;
+    QVBoxLayout *userManagementLayout;
+    QTableWidget *userTableWidget;
+    QPushButton *refreshUserListButton;
+    QPushButton *deleteUserButton; // Button to delete selected user
+    QPushButton *editUserNameButton; // Button to edit selected user's name
+
+    // UI elements for Attendance Log Tab
+    QWidget *attendanceLogTab;
+    QVBoxLayout *attendanceLogLayout;
+    QTableWidget *attendanceTableWidget;
+    QPushButton *refreshLogButton;
 
     // --------- ADD THESE FOR CAMERA ----------
     QCamera *camera;
@@ -64,6 +112,7 @@ private:
     float right_cheek_x, right_cheek_y;
     int ttl; // frames left
     float similarity;
+     size_t userId = 0; // Added for attendance logging
 };
 
 int frameCount = 0;
