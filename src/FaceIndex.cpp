@@ -137,7 +137,7 @@ bool FaceIndex::deleteUser(size_t label) {
 
     try {
         // HNSWlib uses 'label' as the external label passed to addPoint
-        index->mark_deleted(label);
+        index->markDelete(label);
     } catch (const std::runtime_error& e) {
         // This exception can be thrown if the label is not found in the HNSW graph,
         // or if the element was already deleted, or other HNSW internal issues.

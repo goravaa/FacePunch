@@ -184,7 +184,7 @@ QImage MainWindow::alignFace(const QImage &sourceImage, const FaceDetection &det
     const double lx_tgt = 30.0;
     const double ly_tgt = 48.0;
     const double rx_tgt = 82.0;
-    // const double ry_tgt = 48.0; // Not needed as ly_tgt == ry_tgt
+    const double ry_tgt = 48.0;
 
     // Source landmark positions
     double lx_src = detectedFace.left_eye_x;
@@ -198,100 +198,51 @@ QImage MainWindow::alignFace(const QImage &sourceImage, const FaceDetection &det
     double dx_src = rx_src - lx_src;
     double dy_src = ry_src - ly_src;
 
-    // Angle of the source eyes vector
-    double angle_src = std::atan2(dy_src, dx_src);
-    // Target angle is 0 (horizontal)
-    double rotation_angle_rad = -angle_src; // Rotate by negative angle to make it horizontal
-    double rotation_angle_deg = rotation_angle_rad * 180.0 / M_PI;
-
-    // Scale factor
+    // Calculate distance between eyes
     double dist_src = std::sqrt(dx_src * dx_src + dy_src * dy_src);
     const double dist_tgt = rx_tgt - lx_tgt; // 52.0
 
-    // Avoid division by zero or very small distance
+    // Validate eye distance
     if (dist_src < 1e-6) {
-        // Fallback to simple crop if eyes are too close (bad detection)
+        qWarning() << "Eye distance too small, falling back to simple crop";
         return cropFace(sourceImage, detectedFace);
     }
-    double scale = dist_tgt / dist_src;
 
-    // Transformation:
-    // 1. Translate source midpoint to origin
-    // 2. Rotate
-    // 3. Scale
-    // 4. Translate origin to target midpoint (56, 48)
+    // Calculate scale and angle
+    double scale = dist_tgt / dist_src;
+    double angle_src = std::atan2(dy_src, dx_src);
+    double rotation_angle_rad = -angle_src;
+
+    // Create transform
     QTransform transform;
-    transform.translate(mid_x_src, mid_y_src); // Prepare for rotation around source midpoint
+    transform.translate(mid_x_src, mid_y_src);
     transform.rotateRadians(rotation_angle_rad);
     transform.scale(scale, scale);
-    transform.translate(-mid_x_src, -mid_y_src); // Translate source midpoint (now scaled and rotated) to origin
+    transform.translate(-mid_x_src, -mid_y_src);
 
-    // Now, map the source midpoint (which should become target midpoint) to the target midpoint
-    // The current transform makes (mid_x_src, mid_y_src) behave like the origin for subsequent transforms
-    // We want mid_x_src, mid_y_src to map to 56,48 in the *final coordinate system of the output image*
-    // The QImage::transformed() function creates a new image. We need to crop from it.
-    // The transform should map source coordinates to target *canvas* coordinates.
-
-    QTransform final_transform;
-    // Step 1: Translate source eye midpoint to origin
-    final_transform.translate(-mid_x_src, -mid_y_src);
-    // Step 2: Rotate around origin so that eye line becomes horizontal
-    final_transform.rotateRadians(rotation_angle_rad);
-    // Step 3: Scale around origin so that eye distance becomes target distance
-    final_transform.scale(scale, scale);
-    // Step 4: Translate the (now aligned) source eye midpoint to the target eye midpoint
-    const double mid_x_tgt = (lx_tgt + rx_tgt) / 2.0; // 56.0
-    const double mid_y_tgt = (ly_tgt + ly_tgt) / 2.0; // 48.0
-    final_transform.translate(mid_x_tgt, mid_y_tgt);
-
-    // Warp the entire source image
-    QImage warpedImage = sourceImage.transformed(final_transform, Qt::SmoothTransformation);
-
-    // Create the 112x112 output image
-    // The transformation `final_transform` maps a point in the original image
-    // to a point in the `warpedImage`. The point (mid_x_src, mid_y_src) in original
-    // is mapped to (mid_x_tgt, mid_y_tgt) in `warpedImage`.
-    // We need to crop a 112x112 window from `warpedImage` centered at (mid_x_tgt, mid_y_tgt),
-    // but the target landmarks are already defined for a 112x112 image.
-    // So, we just need to take a 112x112 crop starting from (0,0) of an image
-    // that is already aligned to have the landmarks in their target positions.
-
-    // The `final_transform` maps original image points to a new coordinate system.
-    // If we draw the original image with this transform, the point (mid_x_src, mid_y_src)
-    // will land at (mid_x_tgt, mid_y_tgt).
-    // We want the output image of 112x112 such that the eyes are at (30,48) and (82,48).
-
+    // Create output image
     QImage aligned_image(112, 112, sourceImage.format());
-    aligned_image.fill(Qt::black); // Fill with black background
+    aligned_image.fill(Qt::black);
 
+    // Draw transformed image
     QPainter painter(&aligned_image);
     painter.setRenderHint(QPainter::Antialiasing);
     painter.setRenderHint(QPainter::SmoothPixmapTransform);
-
-    // The transform should be set on the painter to draw the sourceImage
-    // such that the source landmarks map to the target landmark positions *within the 112x112 canvas*.
-
-    // Reset transform for clarity
-    QTransform tf;
-    // Translate so source eye midpoint is at origin
-    tf.translate(-lx_src, -ly_src); // Let's try aligning left eye to origin first
-                                     // Then rotate, scale, then translate to lx_tgt, ly_tgt
-
-    // Simpler: compute transform that maps source points to target points
-    // For eyes: (lx_src, ly_src) -> (lx_tgt, ly_tgt) and (rx_src, ry_src) -> (rx_tgt, ry_tgt)
-    // QTransform can do this with QTransform::quadToQuad or from three points.
-    // OpenCV's getAffineTransform uses 3 points. Here we have 2 pairs, need a 3rd.
-    // Let's use the midpoint and orientation/scale method.
-
-    // Transform to map source image region to the 112x112 canvas
-    QTransform final_tf;
-    final_tf.translate(lx_tgt, ly_tgt); // Target: left eye will be at (lx_tgt, ly_tgt)
-    final_tf.rotateRadians(-angle_src);    // Rotate source so eyes are horizontal
-    final_tf.scale(scale, scale);        // Scale so eye distance matches target
-    final_tf.translate(-lx_src, -ly_src);  // Source: move left eye to origin
-
-    painter.setTransform(final_tf);
-    painter.drawImage(QPoint(0,0), sourceImage); // Draw source image transformed onto the 112x112 canvas
+    painter.setTransform(transform);
+    
+    // Calculate source rectangle to draw
+    double face_width = detectedFace.x2 - detectedFace.x1;
+    double face_height = detectedFace.y2 - detectedFace.y1;
+    double margin = std::max(face_width, face_height) * 0.5; // 50% margin
+    
+    QRectF source_rect(
+        detectedFace.x1 - margin,
+        detectedFace.y1 - margin,
+        face_width + 2 * margin,
+        face_height + 2 * margin
+    );
+    
+    painter.drawImage(QRectF(0, 0, 112, 112), sourceImage, source_rect);
     painter.end();
 
     return aligned_image;
@@ -309,61 +260,55 @@ QImage MainWindow::cropFace(const QImage &img, const FaceDetection &fd)
 
 void MainWindow::onRegisterUser()
 {
-    // 1. Collect "Unknown" faces
-    std::vector<CachedFace> unknown_faces;
-    for (const auto& cf : faceCache) {
-        if (cf.name == "Unknown") {
-            unknown_faces.push_back(cf);
+    // Take a snapshot of the current frame
+    if (lastFrame.isNull()) {
+        QMessageBox::critical(this, "Error", "No frame available for registration. Please ensure the camera is working.");
+        return;
+    }
+
+    // Run detection on the current frame
+    std::vector<FaceDetection> faces = detector->detect(lastFrame);
+    
+    // Filter for faces with good confidence
+    std::vector<FaceDetection> good_faces;
+    for (const auto& f : faces) {
+        if (f.confidence >= m_appConfig.confThresh) {
+            good_faces.push_back(f);
         }
     }
 
-    // 2. Check count and proceed
-    if (unknown_faces.empty()) {
-        QMessageBox::information(this, "Info", "No unknown face detected to register. Please ensure an unknown person is in view.");
+    if (good_faces.empty()) {
+        QMessageBox::warning(this, "Registration Error", "No face detected in the current frame. Please ensure a face is clearly visible.");
         return;
     }
 
-    if (unknown_faces.size() > 1) {
-        QMessageBox::warning(this, "Registration Ambiguity", "Multiple unknown faces detected. Please ensure only ONE unknown person is clearly in view and try again.");
+    if (good_faces.size() > 1) {
+        QMessageBox::warning(this, "Registration Error", "Multiple faces detected. Please ensure only one face is in view.");
         return;
     }
 
-    // Exactly one unknown face
-    const CachedFace& face_to_register = unknown_faces[0];
+    // We have exactly one good face
+    const FaceDetection& face_to_register = good_faces[0];
 
-    // 3. Ask for the name
+    // Ask for the name
     bool ok;
     QString name = QInputDialog::getText(this, "Register User", "Enter Name for this face:", QLineEdit::Normal, "", &ok);
     if (!ok || name.trimmed().isEmpty()) {
         return;
     }
 
-    // 4. Reconstruct FaceDetection and align
-    FaceDetection fd_to_register {
-        static_cast<float>(face_to_register.box.left()),
-        static_cast<float>(face_to_register.box.top()),
-        static_cast<float>(face_to_register.box.right()),
-        static_cast<float>(face_to_register.box.bottom()),
-        face_to_register.left_eye_x, face_to_register.left_eye_y,
-        face_to_register.right_eye_x, face_to_register.right_eye_y,
-        face_to_register.nose_x, face_to_register.nose_y,
-        face_to_register.mouth_x, face_to_register.mouth_y,
-        face_to_register.left_cheek_x, face_to_register.left_cheek_y,
-        face_to_register.right_cheek_x, face_to_register.right_cheek_y,
-        face_to_register.conf
-    };
-
-    QImage aligned_image = alignFace(lastFrame, fd_to_register);
-
+    // Try to align the face
+    QImage aligned_image = alignFace(lastFrame, face_to_register);
     if (aligned_image.isNull()) {
         QMessageBox::critical(this, "Error", "Failed to align face for registration. Please try again.");
         return;
     }
 
-    // 5. Get embedding, add to index, save
+    // Get embedding and add to index
     std::vector<float> emb = embedder->getEmbedding(aligned_image);
     faceIndex->add(name.trimmed().toStdString(), emb);
     faceIndex->saveToDisk(m_appConfig.faceDatabasePath);
+    
     QMessageBox::information(this, "Success", "User '" + name.trimmed() + "' registered successfully!");
 }
 
@@ -372,7 +317,7 @@ void MainWindow::onVideoFrame(const QVideoFrame &frame)
     QImage image = frame.toImage();
     if (image.isNull())
         return;
-
+    lastFrame = image;
     frameCount++;
 
     // 1. Age/expire cache
@@ -392,7 +337,7 @@ void MainWindow::onVideoFrame(const QVideoFrame &frame)
             if (aligned_face.isNull()) continue; // Skip if alignment failed
 
             std::vector<float> emb = embedder->getEmbedding(aligned_face);
-            FaceIndex::SearchResult search_result = faceIndex->search(emb, m_appConfig.similarityThreshold);
+            SearchResult search_result = faceIndex->search(emb, m_appConfig.similarityThreshold);
 
             CachedFace cf;
             cf.box = QRect(QPoint(int(f.x1), int(f.y1)), QPoint(int(f.x2), int(f.y2)));

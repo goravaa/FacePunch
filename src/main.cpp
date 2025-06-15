@@ -5,7 +5,7 @@
 
 int main(int argc, char *argv[]) {
     AppConfig config;
-    config.loadFromEnv();
+    config.loadInitialConfig();
 
     QApplication app(argc, argv);
     MainWindow w(config); // Pass config to MainWindow

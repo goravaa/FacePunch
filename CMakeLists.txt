@@ -24,7 +24,9 @@ add_executable(FacePunch
     src/MainWindow.ui
     src/FaceEmbedder.cpp
     src/FaceIndex.cpp
+    src/SettingsDialog.cpp 
     include/MainWindow.hpp
+    include/SettingsDialog.hpp 
 )
 
 # Link Qt6 Widgets and Multimedia
