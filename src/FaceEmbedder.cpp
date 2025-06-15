@@ -5,9 +5,14 @@
 #include <cmath>
 
 // Constructor: loads ONNX model and sets up inference session
+#include <filesystem> // For std::filesystem::exists
+
 FaceEmbedder::FaceEmbedder(const std::string& modelPath)
     : env(ORT_LOGGING_LEVEL_WARNING, "arcface_embedder")
 {
+    if (!std::filesystem::exists(modelPath)) {
+        throw std::runtime_error("ArcFace model file not found: " + modelPath);
+    }
     sessionOpts.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
     std::wstring wModelPath(modelPath.begin(), modelPath.end());
     session = std::make_unique<Ort::Session>(env, wModelPath.c_str(), sessionOpts);
